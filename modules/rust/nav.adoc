@@ -1,0 +1,3 @@
+.rust
+* xref:demo1.adoc[]
+* xref:demo2.adoc[]

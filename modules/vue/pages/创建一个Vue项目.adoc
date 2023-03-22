@@ -1,0 +1,104 @@
+= 创建一个Vue项目
+
+== 使用vite创建一个vue项目
+[source,bash]
+----
+pnpm create vite
+----
+
+.command out
+[source,bash]
+----
+E:\workspace\font>pnpm create vite
+D:/cache/pnpm/store/v3/tmp/dlx-8780      |   +1 +
+Packages are hard linked from the content-addressable store to the virtual store.
+  Content-addressable store is at: D:\cache\pnpm\store\v3
+  Virtual store is at:             D:/cache/pnpm/store/v3/tmp/dlx-8780/node_modules/.pnpm
+D:/cache/pnpm/store/v3/tmp/dlx-8780      | Progress: resolved 1, reused 0, downloaded 1, added 1, done
+√ Project name: ... vite-hello
+√ Select a framework: » Vue
+√ Select a variant: » Customize with create-vue ↗
+D:/cache/pnpm/store/v3/tmp/dlx-16532     |   +1 +
+Packages are hard linked from the content-addressable store to the virtual store.
+  Content-addressable store is at: D:\cache\pnpm\store\v3
+  Virtual store is at:             D:/cache/pnpm/store/v3/tmp/dlx-16532/node_modules/.pnpm
+D:/cache/pnpm/store/v3/tmp/dlx-16532     | Progress: resolved 1, reused 1, downloaded 0, added 1, done
+
+Vue.js - The Progressive JavaScript Framework
+
+√ Add TypeScript? ... No / Yes
+√ Add JSX Support? ... No / Yes
+√ Add Vue Router for Single Page Application development? ... No / Yes
+√ Add Pinia for state management? ... No / Yes
+√ Add Vitest for Unit Testing? ... No / Yes
+√ Add an End-to-End Testing Solution? » Playwright
+√ Add ESLint for code quality? ... No / Yes
+√ Add Prettier for code formatting? ... No / Yes
+
+Scaffolding project in E:\workspace\font\vite-hello...
+
+Done. Now run:
+
+  cd vite-hello
+  pnpm install
+  pnpm format
+  pnpm dev
+
+
+E:\workspace\font>
+----
+
+== 添加Tailwind CSS支持
+[,bash]
+----
+pnpm install -D tailwindcss@latest postcss@latest autoprefixer@latest
+----
+
+.生成配置文件
+[,bash]
+----
+npx tailwindcss init -p
+----
+
+=== 问题
+==== vscode 提示 Unknown at rule @tailwind
+在``.vscode/settings.json``配置文件中新增：
+[,json]
+----
+  "css.lint.unknownAtRules": "ignore"
+----
+
+== 添加husky支持
+[,bash]
+----
+pnpm install -D husky 
+----
+
+.生成配置
+[,bash]
+----
+npx husky install
+----
+
+== 添加tauri支持
+[source,bash]
+----
+pnpm add -D @tauri-apps/cli
+----
+
+.初始化tauri
+[,bash]
+----
+pnpm tauri init
+----
+
+.``package.json`` 添加执行脚本支持
+[source,json]
+----
+  "scripts": {
+    ......
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
+  }
+----
+
