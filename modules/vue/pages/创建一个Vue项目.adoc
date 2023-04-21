@@ -48,7 +48,7 @@ Done. Now run:
 E:\workspace\font>
 ....
 
-== 添加Tailwind CSS支持
+[line-through]#== 添加Tailwind CSS支持#
 [,bash]
 ....
 pnpm install -D tailwindcss postcss autoprefixer
@@ -93,6 +93,55 @@ export default {
 ....
   "css.lint.unknownAtRules": "ignore"
 ....
+
+== 添加WindiCss
+
+.install
+[,sh]
+....
+pnpm i -D vite-plugin-windicss windicss
+....
+
+.配置 `vite.config.ts`
+[,ts]
+....
+import WindiCSS from 'vite-plugin-windicss'
+
+export default {
+  plugins: [
+    WindiCSS(),
+  ],
+}
+....
+
+.在 `main.ts` 中导入
+[,ts]
+....
+import 'virtual:windi.css'
+....
+
+.创建 `windi.config.ts` 
+[,ts]
+....
+import { defineConfig } from 'windicss/helpers'
+import formsPlugin from 'windicss/plugin/forms'
+
+export default defineConfig({
+  darkMode: 'class',
+  safelist: 'p-3 p-4 p-5',
+  theme: {
+    extend: {
+      colors: {
+        teal: {
+          100: '#096',
+        },
+      },
+    },
+  },
+  plugins: [formsPlugin],
+})
+....
+
 
 == 规范与检查 Git 提交
 === Git 提交规范
@@ -254,6 +303,243 @@ npx lint-staged
 }
 ....
 
+== 添加pont
+
+* 安装 vscode 插件， https://marketplace.visualstudio.com/items?itemName=jasonHzq.vscode-pont[pont]
+
+.install 
+[,bash]
+....
+pnpm install -D pont-engine
+....
+
+.添加配置文件 `pont-config.json` 和 `pontTemplate.ts`
+[,bash]
+....
+npx pont start
+....
+
+.`pont-config.json`
+[,json]
+....
+{
+  "originUrl": "http://127.0.0.1:8080/api-docs",
+  "originType": "SwaggerV3",
+  "templatePath": "./pontTemplate",
+  "transformPath": "./pontTransfrom",
+  "surrounding": "typeScript",
+  "outDir": "./src/api",
+  "mocks": {
+    "enable": false
+  },
+  "templateType": "fetch",
+  "prettierConfig": {
+		"arrowParens": "avoid",
+		"bracketSameLine": false,
+		"bracketSpacing": true,
+		"embeddedLanguageFormatting": "auto",
+		"htmlWhitespaceSensitivity": "css",
+		"insertPragma": false,
+		"jsxSingleQuote": false,
+		"printWidth": 100,
+		"proseWrap": "preserve",
+		"quoteProps": "as-needed",
+		"requirePragma": false,
+		"semi": false,
+		"singleQuote": true,
+		"tabWidth": 2,
+		"trailingComma": "none",
+		"useTabs": true,
+    "endOfLine": "lf",
+		"vueIndentScriptAndStyle": false
+	}
+}
+....
+
+.`pontTemplate.ts`
+[,typescript]
+....
+import { Interface, BaseClass, Property, CodeGenerator, Surrounding } from 'pont-engine';
+
+export default class MyGenerator extends CodeGenerator {
+  getInterfaceContentInDeclaration(inter: Interface) {
+    const requestParams = inter.getRequestParams();
+    const paramsCode = inter.getParamsCode('Params');
+
+    return `
+      export ${paramsCode}
+
+      export type Response = ${inter.responseType}
+
+      export const init: Response;
+
+      export function request(${requestParams}): Promise<Response>;
+    `;
+  }
+
+  getBaseClassInDeclaration(base: BaseClass) {
+    const originProps = base.properties;
+
+    base.properties = base.properties.map(prop => {
+      return new Property({
+        ...prop,
+        required: false
+      });
+    });
+
+    const result = super.getBaseClassInDeclaration(base);
+    base.properties = originProps;
+
+    return result;
+  }
+
+  getInterfaceContent(inter: Interface) {
+    const method = inter.method.toUpperCase();
+    const requestParams = inter.getRequestParams(this.surrounding);
+    const paramsCode = inter.getParamsCode('Params', this.surrounding);
+
+    return `
+    /**
+     * @desc ${inter.description}
+     */
+
+    import * as defs from '../../baseClass';
+    import { PontCore } from '../../pontCore';
+
+    export ${paramsCode}
+
+    export const init = ${inter.response.getInitialValue()};
+
+    export function request(${requestParams}) {
+      return PontCore.fetch(PontCore.getUrl("${inter.path}", params, "${method}"), ${inter.getRequestContent()});
+    }
+   `;
+  }
+}
+....
+
+.`pontTransfrom.ts`
+[,ts]
+....
+import { Mod, StandardDataSource } from 'pont-engine'
+
+// 根据 Mod.name进行过滤
+export default function transform(data: StandardDataSource) {
+  const { mods, baseClasses } = removeDuplicate(data)
+  data.mods = mods
+  data.baseClasses = baseClasses
+  return data
+}
+
+function removeDuplicate(data: StandardDataSource) {
+  const obj: { [key: string]: boolean } = {}
+  const mods = data.mods.reduce<Mod[]>((item, next) => {
+    if (!obj[next.name]) {
+      item.push(next)
+      obj[next.name] = true
+    }
+    return item
+  }, [])
+
+  // 获取所有name
+  let names = JSON.stringify(mods).match(/"name":".+?"/g)
+
+  names = Array.from(new Set(names)) // 去重
+    // 取name的值
+    .map((item) => item.split(':')[1].replace(/\"/g, ''))
+
+  // 去重baseclasses
+  const baseClasses = data.baseClasses.filter((cls) => names?.includes(cls.name))
+
+  return { mods, baseClasses }
+}
+....
+
+== pinia持久化
+
+.示例 `src/stores/settings.ts`
+[,ts]
+....
+import { defineStore } from 'pinia'
+import { reactive } from 'vue'
+
+export class Setting {
+	userName: string = ''
+}
+
+export const useSettingStore = defineStore(
+	'settings',
+	() => {
+		let setting = reactive(JSON.parse(localStorage.getItem('settings') as string) || new Setting())
+
+		const save = (_setting: Setting) => {
+			setting = _setting
+		}
+
+		const getUserName = () => {
+			console.log('pinia setting ===== ', setting)
+			return setting.userName
+		}
+
+		return { setting, save, getUserName }
+	},
+	{
+		// 开启持久化
+		persist: {
+			storage: localStorage
+		}
+	}
+)
+....
+
+.安装插件
+[,sh]
+....
+pnpm i pinia-plugin-persistedstate
+....
+
+.创建 `src/stores/index.ts`
+[,ts]
+....
+import { createPinia } from 'pinia'
+import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
+
+const pinia = createPinia()
+pinia.use(piniaPluginPersistedstate)
+
+export default pinia
+....
+
+.修改 `main.ts`
+[,ts]
+....
+...
+import pinia from './stores'
+
+app.use(pinia)
+...
+....
+
+.修改 `tsconfig.app.json`
+[,json]
+....
+{
+  "types": "pinia-plugin-persist"
+}
+....
+
+.修改 `vite.config.ts`
+[,ts]
+....
+export default defineConfig({
+	plugins: [
+		AutoImport({
+      // 自动导入
+			dirs: ['./src/stores']
+		})
+	]
+})
+....
 
 == 添加tauri支持
 [source,bash]
